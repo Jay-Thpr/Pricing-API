@@ -8,20 +8,18 @@ app = FastAPI()
 with open('structured_pricing_data.json', 'r') as file:
     structured_data = json.load(file)
 
-# Define the request model
-class PricingRequest(BaseModel):
-    cpu_type: str
-    region: str
-
 @app.get("/")
 def read_root():
+    """
+    Root endpoint.
+    """
     return {"message": "Welcome to the Pricing API"}
 
-@app.post("/get_price/")
-def get_price(request: PricingRequest):
-    cpu_type = request.cpu_type
-    region = request.region
-
+@app.get("/get_price/")
+def get_price(cpu_type: str, region: str):
+    """
+    Endpoint to get price by CPU type and region.
+    """
     for table in structured_data:
         if table.get("header") and "Machine type" in table["header"]:
             for row in table["rows"]:
@@ -34,6 +32,37 @@ def get_price(request: PricingRequest):
                     raise HTTPException(status_code=404, detail="Price not found for the specified CPU type or region")
 
     raise HTTPException(status_code=404, detail="Table with specified CPU type not found")
+
+def get_cost(cpus, memory, region):
+    """
+    Helper function to get cost by specifying the number of CPUs, memory, and region.
+    """
+    for table in structured_data:
+        headers = table['header']
+        if 'Machine type' in headers:
+            for row in table['rows']:
+                machine_type = row[0]
+                row_cpus = int(row[1])
+                row_memory = int(row[2].replace('GB', '').strip())
+                price_info = row[3]
+                
+                if row_cpus == cpus and row_memory == memory:
+                    cost = price_info.get('priceByRegion', {}).get(region)
+                    if cost:
+                        return f"The cost for machine type '{machine_type}' with {cpus} CPUs, {memory}GB memory in region '{region}' is {cost} USD."
+                    else:
+                        return f"No pricing data available for machine type '{machine_type}' in the specified region: {region}."
+    return "No matching machine type found for the given specifications."
+
+@app.get("/get_cost/")
+async def api_get_cost(cpus: int, memory: int, region: str):
+    """
+    Endpoint to get cost by specifying the number of CPUs, memory, and region.
+    """
+    cost_info = get_cost(cpus, memory, region)
+    if "No matching machine type found" in cost_info or "No pricing data available" in cost_info:
+        raise HTTPException(status_code=404, detail=cost_info)
+    return {"cost_info": cost_info}
 
 if __name__ == "__main__":
     import uvicorn
