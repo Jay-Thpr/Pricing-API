@@ -10,16 +10,12 @@ with open('structured_pricing_data.json', 'r') as file:
 
 @app.get("/")
 def read_root():
-    """
-    Root endpoint.
-    """
+    # Root endpoint
     return {"message": "Welcome to the Pricing API"}
 
 @app.get("/get_price/")
 def get_price(cpu_type: str, region: str):
-    """
-    Endpoint to get price by CPU type and region.
-    """
+    # Endpoint to get price by CPU type and region
     for table in structured_data:
         if table.get("header") and "Machine type" in table["header"]:
             for row in table["rows"]:
@@ -34,9 +30,7 @@ def get_price(cpu_type: str, region: str):
     raise HTTPException(status_code=404, detail="Table with specified CPU type not found")
 
 def get_cost(cpus, memory, region):
-    """
-    Helper function to get cost by specifying the number of CPUs, memory, and region.
-    """
+    # Helper function to get cost by specifying the number of CPUs, memory, and region
     for table in structured_data:
         headers = table['header']
         if 'Machine type' in headers:
@@ -56,9 +50,7 @@ def get_cost(cpus, memory, region):
 
 @app.get("/get_cost/")
 async def api_get_cost(cpus: int, memory: int, region: str):
-    """
-    Endpoint to get cost by specifying the number of CPUs, memory, and region.
-    """
+    # Endpoint to get cost by specifying the number of CPUs, memory, and region
     cost_info = get_cost(cpus, memory, region)
     if "No matching machine type found" in cost_info or "No pricing data available" in cost_info:
         raise HTTPException(status_code=404, detail=cost_info)
